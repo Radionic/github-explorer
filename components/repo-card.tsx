@@ -7,7 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Star, GitFork, ExternalLink, Globe, Code } from "lucide-react";
+import { Star, Github, Globe, Code, Clock } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 
 export interface Repository {
@@ -35,8 +36,8 @@ interface RepoCardProps {
 
 export function RepoCard({ repo }: RepoCardProps) {
   return (
-    <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
-      <CardHeader>
+    <Card className="h-full flex flex-col hover:shadow-md transition-shadow gap-2 p-4">
+      <CardHeader className="p-0">
         <div className="flex items-center justify-between">
           <Link
             href={repo.html_url}
@@ -45,22 +46,21 @@ export function RepoCard({ repo }: RepoCardProps) {
           >
             <CardTitle className="line-clamp-1">{repo.name}</CardTitle>
           </Link>
+          {repo.language && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Code className="h-4 w-4" />
+              <span>{repo.language}</span>
+            </div>
+          )}
         </div>
         <CardDescription className="flex items-center gap-2 text-sm">
           by {repo.owner.login}
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex-1">
-        <p className="text-sm line-clamp-3 mb-4">
+      <CardContent className="flex-1 p-0">
+        <p className="text-sm line-clamp-3">
           {repo.description || "No description provided"}
         </p>
-
-        {repo.language && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
-            <Code className="h-4 w-4" />
-            <span>{repo.language}</span>
-          </div>
-        )}
 
         {repo.topics && repo.topics.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
@@ -80,17 +80,20 @@ export function RepoCard({ repo }: RepoCardProps) {
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex items-center justify-between border-t pt-4">
+      <CardFooter className="flex items-center justify-between border-t px-2 !pt-3">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
             <Star className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm">
-              {repo.stargazers_count.toLocaleString()}
-            </span>
+            <span className="text-xs">{repo.stargazers_count}</span>
           </div>
           <div className="flex items-center gap-1">
-            <GitFork className="h-4 w-4" />
-            <span className="text-sm">{repo.forks_count.toLocaleString()}</span>
+            <Clock className="h-4 w-4" />
+            <span className="text-xs">
+              Updated{" "}
+              {formatDistanceToNow(new Date(repo.updated_at), {
+                addSuffix: true,
+              })}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -100,7 +103,7 @@ export function RepoCard({ repo }: RepoCardProps) {
             className="p-1 rounded-full hover:bg-muted transition-colors"
             title="GitHub Repository"
           >
-            <ExternalLink className="h-4 w-4" />
+            <Github className="h-4 w-4" />
           </Link>
           {repo.homepage && (
             <Link
