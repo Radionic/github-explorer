@@ -4,57 +4,27 @@ import { useState } from "react";
 import { Header } from "@/components/header";
 import { Search } from "@/components/search";
 import { RepoGrid } from "@/components/repo-grid";
-import { Repository } from "@/components/repo-card";
-import { fetchAllStarredRepos } from "@/lib/github";
 import { PaginationControl } from "@/components/pagination-control";
-
-const REPOS_PER_PAGE = 100;
+import { useStarredRepos } from "@/hooks/use-starred-repos";
 
 export default function Home() {
   const [username, setUsername] = useState("");
-  const [allRepos, setAllRepos] = useState<Repository[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Calculate pagination info based on all repositories
-  const totalCount = allRepos.length;
-  const totalPages = Math.ceil(totalCount / REPOS_PER_PAGE);
-
-  // Get current page of repositories
-  const currentRepos = allRepos.slice(
-    (currentPage - 1) * REPOS_PER_PAGE,
-    currentPage * REPOS_PER_PAGE
-  );
+  const { currentRepos, isLoading, error, totalCount, totalPages } =
+    useStarredRepos({
+      username,
+      currentPage,
+    });
 
   const handleSearch = async (searchUsername: string) => {
     if (!searchUsername.trim()) return;
-
     setUsername(searchUsername);
     setCurrentPage(1);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Fetch all starred repositories at once
-      const allRepos = await fetchAllStarredRepos({
-        username: searchUsername,
-        perPage: REPOS_PER_PAGE,
-      });
-
-      setAllRepos(allRepos);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-      setAllRepos([]);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages || page === currentPage) return;
     setCurrentPage(page);
-    // Scroll to top when changing pages
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -78,11 +48,11 @@ export default function Home() {
 
         {error && (
           <div className="bg-destructive/10 text-destructive p-4 rounded-md">
-            {error}
+            {error.message}
           </div>
         )}
 
-        {(allRepos.length > 0 || isLoading) && (
+        {((currentRepos && currentRepos.length > 0) || isLoading) && (
           <div className="mt-4">
             {username && !isLoading && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
@@ -107,7 +77,7 @@ export default function Home() {
               </div>
             )}
 
-            <RepoGrid repos={currentRepos} isLoading={isLoading} />
+            <RepoGrid repos={currentRepos ?? []} isLoading={isLoading} />
 
             {totalPages > 1 && !isLoading && (
               <div className="mt-8">
