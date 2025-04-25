@@ -9,7 +9,7 @@ export function Header() {
         <h1 className="text-2xl font-bold">GitHub Explorer</h1>
       </div>
       <Link
-        href="https://github.com"
+        href="https://github.com/Radionic/github-explorer"
         target="_blank"
         className="flex items-center gap-2 hover:text-primary transition-colors"
       >

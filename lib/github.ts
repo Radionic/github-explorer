@@ -1,39 +1,40 @@
 import { Repository } from "@/components/repo-card";
 
-interface FetchStarredReposParams {
-  username: string;
-  page?: number;
-  perPage?: number;
-}
-
-export async function fetchStarredRepos({
+export async function fetchAllStarredRepos({
   username,
-  page = 1,
-  perPage = 30,
-}: FetchStarredReposParams): Promise<Repository[]> {
-  if (!username) return [];
+  perPage = 100,
+}: {
+  username: string;
+  perPage?: number;
+}): Promise<Repository[]> {
+  const allRepos: Repository[] = [];
 
   try {
-    const response = await fetch(
-      `https://api.github.com/users/${username}/starred?page=${page}&per_page=${perPage}`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-        },
-      }
-    );
+    let currentPage = 1;
+    while (true) {
+      const response = await fetch(
+        `https://api.github.com/users/${username}/starred?page=${currentPage++}&per_page=${perPage}`,
+        {
+          headers: {
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return [];
+      if (!response.ok) {
+        throw new Error(`GitHub API responded with status ${response.status}`);
       }
-      throw new Error(`GitHub API responded with status ${response.status}`);
+
+      const repos = (await response.json()) as Repository[];
+      allRepos.push(...repos);
+
+      if (repos.length < perPage || repos.length === 0) {
+        break;
+      }
     }
-
-    const data = await response.json();
-    return data as Repository[];
+    return allRepos;
   } catch (error) {
-    console.error("Error fetching starred repos:", error);
+    console.error("Error fetching all starred repos:", error);
     throw error;
   }
 }

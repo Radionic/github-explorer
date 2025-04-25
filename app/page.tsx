@@ -5,28 +5,57 @@ import { Header } from "@/components/header";
 import { Search } from "@/components/search";
 import { RepoGrid } from "@/components/repo-grid";
 import { Repository } from "@/components/repo-card";
-import { fetchStarredRepos } from "@/lib/github";
+import { fetchAllStarredRepos } from "@/lib/github";
+import { PaginationControl } from "@/components/pagination-control";
+
+const REPOS_PER_PAGE = 100;
 
 export default function Home() {
   const [username, setUsername] = useState("");
-  const [repos, setRepos] = useState<Repository[]>([]);
+  const [allRepos, setAllRepos] = useState<Repository[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Calculate pagination info based on all repositories
+  const totalCount = allRepos.length;
+  const totalPages = Math.ceil(totalCount / REPOS_PER_PAGE);
+
+  // Get current page of repositories
+  const currentRepos = allRepos.slice(
+    (currentPage - 1) * REPOS_PER_PAGE,
+    currentPage * REPOS_PER_PAGE
+  );
+
   const handleSearch = async (searchUsername: string) => {
+    if (!searchUsername.trim()) return;
+
     setUsername(searchUsername);
+    setCurrentPage(1);
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await fetchStarredRepos({ username: searchUsername });
-      setRepos(data);
+      // Fetch all starred repositories at once
+      const allRepos = await fetchAllStarredRepos({
+        username: searchUsername,
+        perPage: REPOS_PER_PAGE,
+      });
+
+      setAllRepos(allRepos);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      setRepos([]);
+      setAllRepos([]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    setCurrentPage(page);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -53,27 +82,45 @@ export default function Home() {
           </div>
         )}
 
-        {(repos.length > 0 || isLoading) && (
+        {(allRepos.length > 0 || isLoading) && (
           <div className="mt-4">
             {username && !isLoading && (
-              <h3 className="text-xl font-medium mb-6">
-                Starred repositories for{" "}
-                <span className="font-bold">{username}</span>
-                <span className="text-muted-foreground ml-2 text-sm">
-                  ({repos.length}{" "}
-                  {repos.length === 1 ? "repository" : "repositories"})
-                </span>
-              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+                <h3 className="text-xl font-medium mb-2 sm:mb-0">
+                  Starred repositories for{" "}
+                  <span className="font-bold">{username}</span>
+                  <span className="text-muted-foreground ml-2 text-sm">
+                    ({totalCount}{" "}
+                    {totalCount === 1 ? "repository" : "repositories"})
+                  </span>
+                </h3>
+
+                {totalPages > 1 && (
+                  <div className="inline-flex items-center gap-2">
+                    <PaginationControl
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
-            <RepoGrid repos={repos} isLoading={isLoading} />
+            <RepoGrid repos={currentRepos} isLoading={isLoading} />
+
+            {totalPages > 1 && !isLoading && (
+              <div className="mt-8">
+                <PaginationControl
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
           </div>
         )}
       </main>
-
-      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <p>GitHub Explorer — Built with Next.js and the GitHub API</p>
-      </footer>
     </div>
   );
 }
