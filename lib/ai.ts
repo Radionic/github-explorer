@@ -3,6 +3,7 @@
 import { generateObject } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
+import { Repository } from "@/components/repo-card";
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -47,4 +48,70 @@ ${readme}`,
     }),
   });
   return { readme, ...object };
+};
+
+interface RerankResult {
+  model: string;
+  usage: {
+    total_tokens: number;
+  };
+  results: {
+    index: number;
+    relevance_score: number;
+  }[];
+}
+
+export const rerankRepos = async ({
+  query,
+  repos,
+  topN = 30,
+}: {
+  query: string;
+  repos: Repository[];
+  topN?: number;
+}) => {
+  const requestData = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.JINA_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "jina-reranker-m0",
+      query: query,
+      top_n: topN,
+      documents: repos.map(
+        (r) => `${r.full_name}
+
+Keywords: ${r.keywords?.join(", ")}
+
+Alternatives: ${r.alternatives?.join(", ")}
+
+${r.summary}`
+      ),
+      return_documents: false,
+    }),
+  };
+
+  try {
+    const response = await fetch("https://api.jina.ai/v1/rerank", requestData);
+    if (!response.ok) {
+      throw new Error(
+        `Reranking API error: ${response.status} ${response.statusText}`
+      );
+    }
+    const data = (await response.json()) as RerankResult;
+    console.log(
+      "Rerank result:",
+      data.results.map(
+        (r) => `${repos[r.index].full_name}: ${r.relevance_score}`
+      )
+    );
+    return data.results
+      .filter((r) => r.relevance_score > 0.7)
+      .map((r) => repos[r.index]);
+  } catch (error) {
+    console.error("Reranking error:", error);
+    return repos;
+  }
 };

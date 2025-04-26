@@ -1,6 +1,7 @@
 "use server";
 
 import { Repository } from "@/components/repo-card";
+import { rerankRepos } from "@/lib/ai";
 import { upstash } from "@/lib/upstash";
 import { QueryMode } from "@upstash/vector";
 
@@ -15,5 +16,6 @@ export const searchRepos = async ({ query }: { query: string }) => {
     "Scores",
     result.map((r) => `${r.id}: ${r.score}`)
   );
-  return result.map((r) => r.metadata as unknown as Repository);
+  const repos = result.map((r) => r.metadata as unknown as Repository);
+  return await rerankRepos({ query, repos });
 };
