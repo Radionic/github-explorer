@@ -32,6 +32,11 @@ export async function fetchAllStarredRepos({
       }
 
       const repos = (await response.json()) as Repository[];
+
+      if (withReadme) {
+        await batchGetReadme({ repos });
+      }
+
       allRepos.push(...repos);
 
       if (
@@ -41,17 +46,6 @@ export async function fetchAllStarredRepos({
       ) {
         break;
       }
-    }
-
-    if (withReadme) {
-      const readmePromises = allRepos.map((repo) =>
-        getReadme({ repoFullName: repo.full_name })
-      );
-      const readmes = await Promise.all(readmePromises);
-      return allRepos.map((repo, index) => ({
-        ...repo,
-        readme: readmes[index],
-      }));
     }
 
     console.log("Fetched all starred repos:", allRepos);
@@ -112,5 +106,29 @@ export async function getReadme({
   } catch (error) {
     console.error("Error fetching repository README:", error);
     return "";
+  }
+}
+
+export async function batchGetReadme({
+  repos,
+  batchSize = 10,
+}: {
+  repos: Repository[];
+  batchSize?: number;
+}) {
+  // Fetch READMEs in batches of 10
+  const totalBatches = Math.ceil(repos.length / batchSize);
+  for (let i = 0; i < repos.length; i += batchSize) {
+    const currentBatch = Math.floor(i / batchSize) + 1;
+    console.log(`Fetching READMEs batch ${currentBatch}/${totalBatches}`);
+
+    const batchRepos = repos.slice(i, i + batchSize);
+    const batchReadmes = await Promise.all(
+      batchRepos.map((repo) => getReadme({ repoFullName: repo.full_name }))
+    );
+
+    batchRepos.forEach((repo, index) => {
+      repo.readme = batchReadmes[index];
+    });
   }
 }
