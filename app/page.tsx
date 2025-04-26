@@ -3,30 +3,26 @@
 import { useState } from "react";
 import { Header } from "@/components/header";
 import { RepoGrid } from "@/components/repo-grid";
-import { PaginationControl } from "@/components/pagination-control";
-import { useStarredRepos } from "@/hooks/use-starred-repos";
 import { HomeTabs } from "@/components/home-tabs";
-import { useIndexingRepos } from "@/hooks/use-indexing-repos";
+import { useIndexRepos } from "@/hooks/use-index-repos";
+import { useSearchRepos } from "@/hooks/use-search-repos";
 
 export default function Home() {
-  const [username, setUsername] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [query, setQuery] = useState("");
   const {
-    currentRepos,
-    isLoading: isFetching,
-    error,
-    totalCount,
-    totalPages,
-  } = useStarredRepos({
-    username,
-    currentPage,
-  });
-  const { mutate: indexRepos, isPending: isIndexing } = useIndexingRepos();
+    data: repos,
+    isLoading: isSearching,
+    error: searchError,
+  } = useSearchRepos({ query });
+  const {
+    mutate: indexRepos,
+    isPending: isIndexing,
+    error: indexError,
+  } = useIndexRepos();
 
-  const handleSearch = async (searchUsername: string) => {
-    if (!searchUsername.trim()) return;
-    setUsername(searchUsername);
-    setCurrentPage(1);
+  const handleSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+    setQuery(searchQuery);
   };
 
   const handleIndex = async (indexUsername: string) => {
@@ -35,13 +31,8 @@ export default function Home() {
     indexRepos({ username: indexUsername });
   };
 
-  const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages || page === currentPage) return;
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const isLoading = isFetching || isIndexing;
+  const isLoading = isSearching || isIndexing;
+  const error = searchError || indexError;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -65,44 +56,7 @@ export default function Home() {
           </div>
         )}
 
-        {((currentRepos && currentRepos.length > 0) || isLoading) && (
-          <div className="mt-4">
-            {username && !isLoading && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-                <h3 className="text-xl font-medium mb-2 sm:mb-0">
-                  Starred repositories for{" "}
-                  <span className="font-bold">{username}</span>
-                  <span className="text-muted-foreground ml-2 text-sm">
-                    ({totalCount}{" "}
-                    {totalCount === 1 ? "repository" : "repositories"})
-                  </span>
-                </h3>
-
-                {totalPages > 1 && (
-                  <div className="inline-flex items-center gap-2">
-                    <PaginationControl
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={handlePageChange}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            <RepoGrid repos={currentRepos ?? []} isLoading={isLoading} />
-
-            {totalPages > 1 && !isLoading && (
-              <div className="mt-8">
-                <PaginationControl
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                />
-              </div>
-            )}
-          </div>
-        )}
+        <RepoGrid repos={repos ?? []} isLoading={isLoading} />
       </main>
     </div>
   );

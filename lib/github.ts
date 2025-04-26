@@ -3,10 +3,12 @@ import { Repository } from "@/components/repo-card";
 export async function fetchAllStarredRepos({
   username,
   perPage = 100,
+  maxPages,
   withReadme = false,
 }: {
   username: string;
   perPage?: number;
+  maxPages?: number;
   withReadme?: boolean;
 }): Promise<Repository[]> {
   const allRepos: Repository[] = [];
@@ -14,6 +16,7 @@ export async function fetchAllStarredRepos({
   try {
     let currentPage = 1;
     while (true) {
+      console.log(`Fetching page ${currentPage} of ${username}`);
       const response = await fetch(
         `https://api.github.com/users/${username}/starred?page=${currentPage++}&per_page=${perPage}`,
         {
@@ -31,7 +34,11 @@ export async function fetchAllStarredRepos({
       const repos = (await response.json()) as Repository[];
       allRepos.push(...repos);
 
-      if (repos.length < perPage || repos.length === 0) {
+      if (
+        (maxPages && currentPage > maxPages) ||
+        repos.length < perPage ||
+        repos.length === 0
+      ) {
         break;
       }
     }
@@ -43,7 +50,7 @@ export async function fetchAllStarredRepos({
       const readmes = await Promise.all(readmePromises);
       return allRepos.map((repo, index) => ({
         ...repo,
-        readme: readmes[index].content,
+        readme: readmes[index],
       }));
     }
 
@@ -55,32 +62,32 @@ export async function fetchAllStarredRepos({
   }
 }
 
-export interface Readme {
-  type: string;
-  encoding: string;
-  size: number;
-  name: string;
-  path: string;
-  content: string;
-  sha: string;
-  url: string;
-  git_url: string | null;
-  html_url: string | null;
-  download_url: string | null;
-  _links: {
-    git: string | null;
-    html: string | null;
-    self: string;
-  };
-  target?: string;
-  submodule_git_url?: string;
-}
+// export interface Readme {
+//   type: string;
+//   encoding: string;
+//   size: number;
+//   name: string;
+//   path: string;
+//   content: string;
+//   sha: string;
+//   url: string;
+//   git_url: string | null;
+//   html_url: string | null;
+//   download_url: string | null;
+//   _links: {
+//     git: string | null;
+//     html: string | null;
+//     self: string;
+//   };
+//   target?: string;
+//   submodule_git_url?: string;
+// }
 
 export async function getReadme({
   repoFullName,
 }: {
   repoFullName: string;
-}): Promise<Readme> {
+}): Promise<string> {
   try {
     const apiKey = process.env.GITHUB_API_KEY;
     const response = await fetch(
@@ -97,13 +104,13 @@ export async function getReadme({
       throw new Error(`GitHub API responded with status ${response.status}`);
     }
 
-    const readmeData = (await response.json()) as Readme;
+    const readmeData = (await response.json()) as { content: string };
     const decodedContent = Buffer.from(readmeData.content, "base64").toString(
       "utf-8"
     );
-    return { ...readmeData, content: decodedContent };
+    return decodedContent;
   } catch (error) {
     console.error("Error fetching repository README:", error);
-    throw error;
+    return "";
   }
 }
