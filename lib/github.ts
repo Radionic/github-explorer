@@ -10,7 +10,7 @@ export async function fetchAllStarredRepos({
   withReadme?: boolean;
 }): Promise<Repository[]> {
   const allRepos: Repository[] = [];
-
+  const apiKey = process.env.GITHUB_API_KEY;
   try {
     let currentPage = 1;
     while (true) {
@@ -19,6 +19,7 @@ export async function fetchAllStarredRepos({
         {
           headers: {
             Accept: "application/vnd.github.v3+json",
+            Authorization: apiKey ? `Bearer ${apiKey}` : "",
           },
         }
       );
@@ -33,7 +34,6 @@ export async function fetchAllStarredRepos({
       if (repos.length < perPage || repos.length === 0) {
         break;
       }
-      break;
     }
 
     if (withReadme) {
@@ -82,15 +82,14 @@ export async function getReadme({
   repoFullName: string;
 }): Promise<Readme> {
   try {
-    const headers: HeadersInit = {
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    };
-
+    const apiKey = process.env.GITHUB_API_KEY;
     const response = await fetch(
       `https://api.github.com/repos/${repoFullName}/readme`,
       {
-        headers,
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: apiKey ? `Bearer ${apiKey}` : "",
+        },
       }
     );
 
