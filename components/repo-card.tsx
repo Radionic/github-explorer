@@ -10,6 +10,7 @@ import {
 import { Star, Github, Globe, Code, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { formatStarCount } from "@/lib/utils";
 
 export interface Repository {
   id: number;
@@ -88,7 +89,9 @@ export function RepoCard({ repo }: RepoCardProps) {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
             <Star className="h-4 w-4 text-yellow-500" />
-            <span className="text-xs">{repo.stargazers_count}</span>
+            <span className="text-xs">
+              {formatStarCount(repo.stargazers_count)}
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4" />

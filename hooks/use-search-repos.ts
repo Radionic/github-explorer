@@ -6,5 +6,6 @@ export const useSearchRepos = ({ query }: { query: string }) => {
     queryKey: ["search", query],
     queryFn: () => searchRepos({ query }),
     enabled: !!query,
+    refetchOnWindowFocus: false,
   });
 };
