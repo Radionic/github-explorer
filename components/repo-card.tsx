@@ -28,6 +28,7 @@ export interface Repository {
   topics: string[];
   created_at: string;
   updated_at: string;
+  readme?: string;
 }
 
 interface RepoCardProps {

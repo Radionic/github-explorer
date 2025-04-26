@@ -2,24 +2,37 @@
 
 import { useState } from "react";
 import { Header } from "@/components/header";
-import { Search } from "@/components/search";
 import { RepoGrid } from "@/components/repo-grid";
 import { PaginationControl } from "@/components/pagination-control";
 import { useStarredRepos } from "@/hooks/use-starred-repos";
+import { HomeTabs } from "@/components/home-tabs";
+import { useIndexingRepos } from "@/hooks/use-indexing-repos";
 
 export default function Home() {
   const [username, setUsername] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const { currentRepos, isLoading, error, totalCount, totalPages } =
-    useStarredRepos({
-      username,
-      currentPage,
-    });
+  const {
+    currentRepos,
+    isLoading: isFetching,
+    error,
+    totalCount,
+    totalPages,
+  } = useStarredRepos({
+    username,
+    currentPage,
+  });
+  const { mutate: indexRepos, isPending: isIndexing } = useIndexingRepos();
 
   const handleSearch = async (searchUsername: string) => {
     if (!searchUsername.trim()) return;
     setUsername(searchUsername);
     setCurrentPage(1);
+  };
+
+  const handleIndex = async (indexUsername: string) => {
+    if (!indexUsername.trim()) return;
+    console.log("Indexing repos for", indexUsername);
+    indexRepos({ username: indexUsername });
   };
 
   const handlePageChange = (page: number) => {
@@ -28,6 +41,8 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const isLoading = isFetching || isIndexing;
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -35,15 +50,13 @@ export default function Home() {
       <main className="flex-1 container mx-auto px-4 py-8 flex flex-col gap-8">
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <h2 className="text-3xl font-bold mb-6">
-            Explore GitHub Starred Repositories
+            Explore GitHub Repositories
           </h2>
-          <p className="text-muted-foreground mb-8 max-w-2xl">
-            Enter a GitHub username to discover repositories they've starred.
-            Find interesting projects, libraries, and tools other developers are
-            interested in.
-          </p>
-
-          <Search onSearch={handleSearch} isLoading={isLoading} />
+          <HomeTabs
+            handleSearch={handleSearch}
+            handleIndex={handleIndex}
+            disabled={isLoading}
+          />
         </div>
 
         {error && (
