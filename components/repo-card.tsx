@@ -29,6 +29,9 @@ export interface Repository {
   created_at: string;
   updated_at: string;
   readme?: string;
+  summary?: string;
+  alternatives?: string[];
+  keywords?: string[];
 }
 
 interface RepoCardProps {

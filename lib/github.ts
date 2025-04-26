@@ -1,4 +1,7 @@
+"use server";
+
 import { Repository } from "@/components/repo-card";
+import { summarizeReadme } from "./ai";
 
 export async function fetchAllStarredRepos({
   username,
@@ -34,7 +37,7 @@ export async function fetchAllStarredRepos({
       const repos = (await response.json()) as Repository[];
 
       if (withReadme) {
-        await batchGetReadme({ repos });
+        await getAndProcessReadme({ repos });
       }
 
       allRepos.push(...repos);
@@ -56,32 +59,11 @@ export async function fetchAllStarredRepos({
   }
 }
 
-// export interface Readme {
-//   type: string;
-//   encoding: string;
-//   size: number;
-//   name: string;
-//   path: string;
-//   content: string;
-//   sha: string;
-//   url: string;
-//   git_url: string | null;
-//   html_url: string | null;
-//   download_url: string | null;
-//   _links: {
-//     git: string | null;
-//     html: string | null;
-//     self: string;
-//   };
-//   target?: string;
-//   submodule_git_url?: string;
-// }
-
 export async function getReadme({
   repoFullName,
 }: {
   repoFullName: string;
-}): Promise<string> {
+}): Promise<string | undefined> {
   try {
     const apiKey = process.env.GITHUB_API_KEY;
     const response = await fetch(
@@ -105,11 +87,10 @@ export async function getReadme({
     return decodedContent;
   } catch (error) {
     console.error("Error fetching repository README:", error);
-    return "";
   }
 }
 
-export async function batchGetReadme({
+export async function getAndProcessReadme({
   repos,
   batchSize = 10,
 }: {
@@ -124,11 +105,35 @@ export async function batchGetReadme({
 
     const batchRepos = repos.slice(i, i + batchSize);
     const batchReadmes = await Promise.all(
-      batchRepos.map((repo) => getReadme({ repoFullName: repo.full_name }))
+      batchRepos.map((repo) =>
+        getReadme({ repoFullName: repo.full_name }).then((readme) => {
+          if (!readme) {
+            console.warn(`No README for ${repo.full_name}`);
+            return {
+              summary: "",
+              alternatives: [],
+              keywords: [],
+              readme: "",
+            };
+          }
+          return summarizeReadme({
+            repoName: repo.full_name,
+            description: repo.description || "No description",
+            readme,
+          }).catch((error) => {
+            console.error(`Error summarizing ${repo.full_name}: ${error}`);
+            return { summary: "", alternatives: [], keywords: [], readme };
+          });
+        })
+      )
     );
 
     batchRepos.forEach((repo, index) => {
-      repo.readme = batchReadmes[index];
+      const { summary, alternatives, keywords, readme } = batchReadmes[index];
+      repo.readme = readme;
+      repo.summary = summary;
+      repo.alternatives = alternatives;
+      repo.keywords = keywords;
     });
   }
 }

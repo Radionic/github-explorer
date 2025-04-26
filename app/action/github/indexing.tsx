@@ -6,8 +6,12 @@ import { upstash } from "@/lib/upstash";
 
 const formatRepo = (repo: Repository) => {
   return `${repo.full_name}
-${repo.description}
-${repo.readme}`;
+
+Keywords: ${repo.keywords?.join(", ")}
+
+Alternatives: ${repo.alternatives?.join(", ")}
+
+${repo.summary || repo.description}`;
 };
 
 const upsertRepos = async ({ repos }: { repos?: Repository[] }) => {
